@@ -3,6 +3,7 @@ const orderModel = require('../../../databases/models/order.model')
 const AppError = require('../../utils/AppError')
 const { catchAsyncError } = require('../../middleware/catchAsyncError')
 const productModel = require('../../../databases/models/product.model')
+const userModel = require('../../../databases/models/user.model')
 const couponModel = require('../../../databases/models/coupon.model')
 const stripe = require('stripe')('sk_test_51O4m4tB9UbIOtgpkiaZMdlkrCV0t3Jp5AHjToxwGMc6FnmZflQUnvYHnrhEObZP2hWQ5JO5KXhJ4LnTuP2liPMvR00g64ASGXL');
 // **********************************************************************
@@ -84,8 +85,8 @@ module.exports.createOnlineOrder = catchAsyncError((request, response) => {
         return response.status(400).send(`Webhook Error: ${err.message}`);
     }
     if (event.type == 'checkout.session.completed') {
-        const checkoutSessionCompleted = event.data.object;
-        console.log('Create Order Here.....');
+        // const checkoutSessionCompleted = event.data.object;
+        card(event.data.object)
     } else {
         console.log(`Unhandled event type ${event.type}`);
     }
@@ -94,3 +95,33 @@ module.exports.createOnlineOrder = catchAsyncError((request, response) => {
 )
 
 
+async function card(e , res) {
+    let cart = await cartModel.findById(e.client_reference_id)
+    if (!cart) return next(new AppError('Cart Not Found ', 404))
+    let user = await userModel.findOne({ email: e.customer_email })
+
+    const order = new orderModel({
+        user: user._id,
+        cartItems: cart.cartItems,
+        totalOrderPrice: e.amount_total / 100,
+        shippingAddress: e.metadata.shippingAddress,
+        paymentMethod: "card",
+        isPaid: true,
+        paidAt: Date.now(),
+
+    })
+    await order.save()
+    if (order) {
+        let options = cart.cartItems.map(item => ({
+            updateOne: {
+                filter: { _id: item.product },
+                update: { $inc: { quantity: -item.quantity, sold: item.quantity } }
+            }
+        }))
+        await productModel.bulkWrite(options)
+        await cartModel.findOneAndDelete({ user: user._id })
+        return res.status(201).json({ message: ' Success', order })
+    }
+    return next(new AppError('Order Not Found', 404))
+
+}

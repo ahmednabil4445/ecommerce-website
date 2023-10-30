@@ -26,17 +26,14 @@ const orderSchema = mongoose.Schema({
         default:false
        
     },
-    paidAt:{
-        type:Boolean,
-        default:false
-       
-    },
+    paidAt:Date,
     isDeliverd:{
         type:Boolean,
         default:false
        
     },
-    deliveredAt:Date
+    deliveredAt:Date,
+    notes:String
 }, { timestamps: true })
 
 module.exports = mongoose.model('order', orderSchema)
