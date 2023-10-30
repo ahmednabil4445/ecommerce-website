@@ -5,6 +5,10 @@ var morgan = require('morgan')
 const AppError = require('./src/utils/AppError')
 const app = express()
 const port = 3000
+// ******************************************* Webhook **************************************
+const { createOnlineOrder } = require('./src/moduels/order/order.service')
+app.post('/webhook', express.raw({ type: 'application/json' }),createOnlineOrder);
+// ******************************************************************************************
 app.use(express.json())
 app.use(express.static('uploads'))
 app.use(morgan('dev'))
@@ -35,8 +39,12 @@ app.use((err, req, res, next) => {
     res.status(statusCode).json({ Error: err.message, statusCode })
 })
 dbConnection()
+
+
 app.listen(process.env.PORT || port, () => console.log(`Example app listening on port ${port}!`))
 
 process.on('unhandledRejection', (err) => {
     console.log('unhandledRejection', err);
 })
+
+    

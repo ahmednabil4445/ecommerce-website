@@ -60,16 +60,37 @@ module.exports.createCheckOutSession = catchAsyncError(async (req, res, next) =>
                         name: req.user.name
                     }
                 },
-                quantity:1
+                quantity: 1
             }
         ],
-        mode:'payment',
-        success_url:"https://hatem011.github.io/e-commerce/#/login",
-        cancel_url:"https://hatem011.github.io/e-commerce/#/register",
-        customer_email:req.user.email,
-        client_reference_id:req.params.id,
-        metadata:req.body.shippingAddress
+        mode: 'payment',
+        success_url: "https://hatem011.github.io/e-commerce/#/login",
+        cancel_url: "https://hatem011.github.io/e-commerce/#/register",
+        customer_email: req.user.email,
+        client_reference_id: req.params.id,
+        metadata: req.body.shippingAddress
     })
     res.status(200).json({ message: ' Success', session })
 
 })
+
+
+module.exports.createOnlineOrder = catchAsyncError((request, response) => {
+    const sig = request.headers['stripe-signature'].toString();
+    let event;
+    try {
+        event = stripe.webhooks.constructEvent(request.body, sig, 'whsec_EqqMCXtaOgaRsqp5NGeXi9DmMz6kaAuq');
+    } catch (err) {
+        return response.status(400).send(`Webhook Error: ${err.message}`);
+    }
+    if (event.type == 'checkout.session.completed') {
+        const checkoutSessionCompleted = event.data.object;
+        console.log('Create Order Here.....');
+    } else {
+        console.log(`Unhandled event type ${event.type}`);
+    }
+    response.send();
+}
+)
+
+
